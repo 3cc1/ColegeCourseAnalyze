@@ -5,4 +5,4 @@ import pdf
 import pandas as pd
 from dotenv import load_dotenv
 import os 
-
+pip install streamlit pandas pdfplumber plotly
