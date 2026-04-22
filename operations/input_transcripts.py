@@ -2,14 +2,51 @@ import pandas as pd
 import re
 import pdfplumber
 
+def get_pdf_text(pdf_path):
+    text = ""
 
-def load_pdf_data(pdf_file):
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+
+            if page_text:
+                text += page_text + "\n"
+
+    return text
+def load_pdf_data(pdf_path):
+
+    text = get_pdf_text(pdf_path)
+
+    students = text.split("Student ")
+
+    rows = []
+
+    for block in students:
+        if not block.strip():
+            continue
+
+        try:
+            name_match = re.search(r"\d+:\s(.+?) — CS Major,\s(.+)", block)
+            progress_match = re.search(r"Progress:\s*(\d+)%", block)
+
+            rows.append({
+                "Name": name_match.group(1).strip(),
+                "Year": name_match.group(2).strip(),
+                "Progress": int(progress_match.group(1))
+            })
+
+        except:
+            pass
+
+    return pd.DataFrame(rows)
+
+def load_pdf_text(pdf_path):
     text = ""
 
     # -----------------------------
     # 1. READ PDF TEXT
     # -----------------------------
-    with pdfplumber.open(pdf_file) as pdf:
+    with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             page_text = page.extract_text()
             if page_text:
@@ -101,7 +138,7 @@ def load_pdf_data(pdf_file):
 # 3. LOAD PDF (CHANGE PATH HERE)
 # -----------------------------
 pdf_path = r"C:\Users\Kostiantyn\Desktop\course_analyze\database\pdf_file.pdf"
-df = load_pdf_data(pdf_path)
+df = load_pdf_text(pdf_path)
 
 # -----------------------------
 # 4. PRINT RESULTS
@@ -119,20 +156,16 @@ for _, row in df.iterrows():
     print(f"Remaining ({len(row['Remaining'])}): {row['Remaining']}")
 
 
-search_name = input("\nEnter student name to search: ").strip().lower()
 
-# Find matching student(s)
-filtered_df = df[df["Name"].str.lower().str.contains(search_name)]
 
-# -----------------------------
-# OUTPUT
-# -----------------------------
-if filtered_df.empty:
-    print("\nNo student found.")
-else:
-    for _, row in filtered_df.iterrows():
-        print(f"\nStudent: {row['Name']} ({row['Year']})")
-        print(f"Progress: {row['Progress']}%")
-        print(f"Completed ({len(row['Completed'])}): {row['Completed']}")
-        print(f"In Progress ({len(row['In Progress'])}): {row['In Progress']}")
-        print(f"Remaining ({len(row['Remaining'])}): {row['Remaining']}")
+def find_student(pdf_path, student_name):
+
+    text = get_pdf_text(pdf_path)
+
+    students = text.split("Student ")
+
+    for block in students:
+        if student_name.lower() in block.lower():
+            return "Student " + block
+
+    return None
